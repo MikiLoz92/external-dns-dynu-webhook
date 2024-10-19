@@ -1,0 +1,6 @@
+[package]
+name = "external-dns-dynu-webhook"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
