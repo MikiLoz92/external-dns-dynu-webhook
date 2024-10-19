@@ -1,9 +1,16 @@
-FROM debian:bookworm-slim
-COPY /target/x86_64-unknown-linux-gnu/release/external-dns-dynu-webhook /opt/external-dns-dynu-webhook
-WORKDIR /opt
+# build container
+FROM rust:1.80.0-slim-bookworm AS builder
+RUN apt update && apt install -y librust-openssl-dev libssl-dev
+RUN mkdir /app
+COPY . /app
+RUN cd /app && cargo build --release
 
-ENV RUST_BACKTRACE=full
-
-ENTRYPOINT ["/opt/external-dns-dynu-webhook"]
-
-EXPOSE 80
+# target container
+FROM rust:1.80.0-alpine
+RUN mkdir /app
+COPY --from=builder /app/target/release/external-dns-dynu-webhook /app/external-dns-dynu-webhook
+WORKDIR /app
+CMD ["/app/external-dns-dynu-webhook"]
+EXPOSE 8888
+ENV RUST_LOG="trace"
+ENV PORT="8888"
