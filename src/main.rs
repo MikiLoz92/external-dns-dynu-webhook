@@ -18,6 +18,7 @@ async fn main() {
     );
 
     let app = Router::new()
+        .route("/", get(root))
         .route("/healthz", get(root))
         .route("/records", get(retrieve_dns_records))
         .with_state(app_state);
