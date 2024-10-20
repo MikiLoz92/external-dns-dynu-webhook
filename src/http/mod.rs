@@ -57,9 +57,10 @@ pub async fn adjust_endpoints(
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/external.dns.webhook+json;version=1".parse().unwrap());
+    headers.insert("Vary", "Content-Type".parse().unwrap());
     (
         headers,
-        Json(DomainFilter::new(Some(vec![".mikiloz.es".to_owned()]), None, None, None)),
+        Json(endpoints),
     )
 }
 

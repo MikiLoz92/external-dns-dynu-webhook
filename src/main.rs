@@ -1,9 +1,9 @@
 mod state;
 mod http;
 
-use crate::http::{retrieve_dns_records, retrieve_domain_filter};
+use crate::http::{adjust_endpoints, retrieve_dns_records, retrieve_domain_filter};
 use crate::state::AppState;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -21,6 +21,7 @@ async fn main() {
         .route("/", get(retrieve_domain_filter))
         .route("/healthz", get(root))
         .route("/records", get(retrieve_dns_records))
+        .route("/adjustendpoints", post(adjust_endpoints))
         .with_state(app_state);
 
     println!("Axum is serving on port 8888!");
