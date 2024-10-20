@@ -11,9 +11,9 @@ pub struct DnsResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DynuHttpResponse<T> {
+pub struct RecordsResponse {
     pub status_code: u16,
-    pub response: T,
+    pub dns_records: Vec<RecordResponse>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

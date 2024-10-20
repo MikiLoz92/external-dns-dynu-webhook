@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use reqwest::Request;
-use crate::http::dynu::{DnsResponse, DynuHttpResponse, RecordResponse};
+use crate::http::dynu::{DnsResponse, RecordsResponse, RecordResponse};
 
 #[debug_handler]
 pub async fn retrieve_dns_records(
@@ -36,8 +36,8 @@ pub async fn retrieve_dns_records(
                 .header("Accept", "application/json")
                 .header("API-Key", dynu_api_key.clone())
                 .send().await.unwrap();
-            let records_response = serde_json::from_str::<DynuHttpResponse<Vec<RecordResponse>>>(response.text().await.unwrap().as_str()).unwrap();
-            for record in records_response.response {
+            let records_response = serde_json::from_str::<RecordsResponse>(response.text().await.unwrap().as_str()).unwrap();
+            for record in records_response.dns_records {
                 endpoints.push(Endpoint::new(
                     record.hostname,
                     vec![],
