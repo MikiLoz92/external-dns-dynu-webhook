@@ -8,6 +8,8 @@ use axum_macros::debug_handler;
 use derive_new::new;
 use ::serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use axum::http::HeaderMap;
+use axum::response::IntoResponse;
 use crate::http::dynu::DnsResponse;
 
 #[debug_handler]
@@ -35,8 +37,14 @@ pub async fn retrieve_dns_records(
 #[debug_handler]
 pub async fn retrieve_domain_filter(
     State(AppState { .. }): State<AppState>,
-) -> Json<DomainFilter> {
-    Json(DomainFilter::new(Some(vec![".mikiloz.es".to_owned()]), None, None, None))
+) -> impl IntoResponse {
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/external.dns.webhook+json;version=1".parse().unwrap());
+    (
+        headers,
+        Json(DomainFilter::new(Some(vec![".mikiloz.es".to_owned()]), None, None, None)),
+    )
 }
 
 
