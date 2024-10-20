@@ -10,16 +10,17 @@ use ::serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
-use crate::http::dynu::DnsResponse;
+use crate::http::dynu::{DnsResponse, DynuHttpResponse, RecordResponse};
 
 #[debug_handler]
 pub async fn retrieve_dns_records(
-    State(AppState { reqwest_client, dynu_api_key, .. }): State<AppState>,
+    State(AppState { reqwest_client, dynu_api_key, sync_domain_names: sync_domain_names, }): State<AppState>,
 ) -> Json<Vec<Endpoint>> {
 
+    let mut endpoints = Vec::<Endpoint>::new();
     let response = reqwest_client.get("https://api.dynu.com/v2/dns")
         .header("Accept", "application/json")
-        .header("API-Key", dynu_api_key)
+        .header("API-Key", dynu_api_key.clone())
         .send().await;
 
     let Ok(response) = response else {
@@ -27,11 +28,29 @@ pub async fn retrieve_dns_records(
     };
 
     let text = response.text().await.unwrap();
-    dbg!(text.clone());
-    let dns = serde_json::from_str::<DnsResponse>(text.as_str());
-    dbg!(dns);
+    let dns_response = serde_json::from_str::<DnsResponse>(text.as_str()).unwrap();
+    for domain in dns_response.domains {
+        if sync_domain_names.contains(&domain.name) {
+            let response = reqwest_client.get(format!("https://api.dynu.com/v2/dns/{}/record", domain.id))
+                .header("Accept", "application/json")
+                .header("API-Key", dynu_api_key.clone())
+                .send().await.unwrap();
+            let records_response = serde_json::from_str::<DynuHttpResponse<Vec<RecordResponse>>>(response.text().await.unwrap().as_str()).unwrap();
+            for record in records_response.response {
+                endpoints.push(Endpoint::new(
+                    record.hostname,
+                    vec![],
+                    record.record_type,
+                    None,
+                    Some(record.ttl as i64),
+                    HashMap::new(),
+                    None
+                ));
+            }
+        }
+    }
 
-    Json(vec![])
+    Json(endpoints)
 }
 
 #[debug_handler]
