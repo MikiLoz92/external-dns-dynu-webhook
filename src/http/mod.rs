@@ -65,8 +65,12 @@ pub struct ProviderSpecificProperty {
 #[derive(Debug, Clone, new, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DomainFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub regex_include: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub regex_exclude: Option<String>,
 }
