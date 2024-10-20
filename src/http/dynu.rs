@@ -51,7 +51,7 @@ pub struct RecordResponse {
     pub record_type: String,
     pub ttl: u32,
     pub state: bool,
-    pub content: String,
+    pub content: Option<String>,
     pub updated_on: String,
     pub group: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
