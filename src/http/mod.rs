@@ -34,23 +34,8 @@ pub async fn retrieve_dns_records(
 
 #[debug_handler]
 pub async fn retrieve_domain_filter(
-    State(AppState { reqwest_client, dynu_api_key, .. }): State<AppState>,
+    State(AppState { .. }): State<AppState>,
 ) -> Json<DomainFilter> {
-
-    let response = reqwest_client.get("https://api.dynu.com/v2/dns")
-        .header("Accept", "application/json")
-        .header("API-Key", dynu_api_key)
-        .send().await;
-
-    let Ok(response) = response else {
-        panic!()
-    };
-
-    let text = response.text().await.unwrap();
-    dbg!(text.clone());
-    let dns = serde_json::from_str::<DnsResponse>(text.as_str());
-    dbg!(dns);
-
     Json(DomainFilter::new(Some(vec![".mikiloz.es".to_owned()]), None, None, None))
 }
 
