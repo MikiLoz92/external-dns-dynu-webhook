@@ -32,6 +32,28 @@ pub async fn retrieve_dns_records(
     Json(vec![])
 }
 
+#[debug_handler]
+pub async fn retrieve_domain_filter(
+    State(AppState { reqwest_client, dynu_api_key, .. }): State<AppState>,
+) -> Json<DomainFilter> {
+
+    let response = reqwest_client.get("https://api.dynu.com/v2/dns")
+        .header("Accept", "application/json")
+        .header("API-Key", dynu_api_key)
+        .send().await;
+
+    let Ok(response) = response else {
+        panic!()
+    };
+
+    let text = response.text().await.unwrap();
+    dbg!(text.clone());
+    let dns = serde_json::from_str::<DnsResponse>(text.as_str());
+    dbg!(dns);
+
+    Json(DomainFilter::new(Some(vec![".mikiloz.es".to_owned()]), None, None, None))
+}
+
 
 #[derive(Debug, Clone, new, Serialize, Deserialize)]
 pub struct Endpoint {
@@ -53,4 +75,13 @@ pub struct Endpoint {
 pub struct ProviderSpecificProperty {
     pub name: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, new, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DomainFilter {
+    pub include: Option<Vec<String>>,
+    pub exclude: Option<Vec<String>>,
+    pub regex_include: Option<String>,
+    pub regex_exclude: Option<String>,
 }

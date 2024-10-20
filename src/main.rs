@@ -1,7 +1,7 @@
 mod state;
 mod http;
 
-use crate::http::retrieve_dns_records;
+use crate::http::{retrieve_dns_records, retrieve_domain_filter};
 use crate::state::AppState;
 use axum::routing::get;
 use axum::Router;
@@ -18,7 +18,7 @@ async fn main() {
     );
 
     let app = Router::new()
-        .route("/", get(root))
+        .route("/", get(retrieve_domain_filter))
         .route("/healthz", get(root))
         .route("/records", get(retrieve_dns_records))
         .with_state(app_state);
