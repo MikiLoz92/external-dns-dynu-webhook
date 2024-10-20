@@ -47,6 +47,22 @@ pub async fn retrieve_domain_filter(
     )
 }
 
+#[debug_handler]
+pub async fn adjust_endpoints(
+    State(AppState { .. }): State<AppState>,
+    Json(endpoints): Json<Vec<Endpoint>>,
+) -> impl IntoResponse {
+
+    dbg!(&endpoints);
+
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Type", "application/external.dns.webhook+json;version=1".parse().unwrap());
+    (
+        headers,
+        Json(DomainFilter::new(Some(vec![".mikiloz.es".to_owned()]), None, None, None)),
+    )
+}
+
 
 #[derive(Debug, Clone, new, Serialize, Deserialize)]
 pub struct Endpoint {
