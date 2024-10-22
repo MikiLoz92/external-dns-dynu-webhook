@@ -19,6 +19,8 @@ pub async fn retrieve_dns_records(
     State(AppState { reqwest_client, dynu_api_key, sync_domain_names: sync_domain_names, }): State<AppState>,
 ) -> Json<Vec<Endpoint>> {
 
+    tracing::debug!("GET to /records (retrieve_dns_records)");
+
     let mut endpoints = Vec::<Endpoint>::new();
     let response = reqwest::Client::new().get("https://api.dynu.com/v2/dns")
         .header("Accept", "application/json")
@@ -52,6 +54,7 @@ pub async fn retrieve_dns_records(
         }
     }
 
+    tracing::trace!("GET to /records returns {:?}", endpoints.clone());
     Json(endpoints)
 }
 
@@ -61,7 +64,9 @@ pub async fn apply_changes(
     Json(payload): Json<Value>
 ) -> impl IntoResponse {
 
-    dbg!(payload);
+    tracing::debug!("POST to /records (apply_changes) with {:?}", payload);
+    //dbg!(payload);
+    tracing::trace!("POST to /records returns 200 (not correct, should be 204)");
 
 }
 
@@ -70,11 +75,16 @@ pub async fn retrieve_domain_filter(
     State(AppState { .. }): State<AppState>,
 ) -> impl IntoResponse {
 
+    tracing::debug!("GET to / (retrieve_domain_filter)");
+
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/external.dns.webhook+json;version=1".parse().unwrap());
+    let domain_filter = DomainFilter::new(Some(vec![".mikiloz.es".to_owned()]), None, None, None);
+
+    tracing::trace!("GET to / returns {:?}", domain_filter.clone());
     (
         headers,
-        Json(DomainFilter::new(Some(vec![".mikiloz.es".to_owned()]), None, None, None)),
+        Json(domain_filter),
     )
 }
 
@@ -84,11 +94,14 @@ pub async fn adjust_endpoints(
     Json(endpoints): Json<Vec<Endpoint>>,
 ) -> impl IntoResponse {
 
-    dbg!(&endpoints);
+    tracing::debug!("POST to /adjustendpoints (adjust_endpoints) with {:?}", endpoints);
+    //dbg!(&endpoints);
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Type", "application/external.dns.webhook+json;version=1".parse().unwrap());
     headers.insert("Vary", "Content-Type".parse().unwrap());
+
+    tracing::trace!("POST to /adjustendpoints returns {:?}", endpoints.clone());
     (
         headers,
         Json(endpoints),
