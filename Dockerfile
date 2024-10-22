@@ -12,5 +12,6 @@ COPY --from=builder /app/target/release/external-dns-dynu-webhook /app/external-
 WORKDIR /app
 CMD ["/app/external-dns-dynu-webhook"]
 EXPOSE 8888
+EXPOSE 8080
 ENV RUST_LOG="trace"
 ENV PORT="8888"

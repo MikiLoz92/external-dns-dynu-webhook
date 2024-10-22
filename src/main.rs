@@ -27,9 +27,15 @@ async fn main() {
 
     println!("Axum is serving on port 8888!");
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8888").await.unwrap();
+    let health_probes_listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    let app_listener = tokio::net::TcpListener::bind("0.0.0.0:8888").await.unwrap();
 
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+    axum::serve(
+        health_probes_listener,
+        Router::new().route("/healthz", get(root)).into_make_service_with_connect_info::<SocketAddr>()
+    ).await.unwrap();
+
+    axum::serve(app_listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
             signal::unix::signal(signal::unix::SignalKind::terminate())
                 .expect("failed to install signal handler")
