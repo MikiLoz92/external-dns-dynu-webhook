@@ -75,7 +75,7 @@ pub async fn apply_changes(
     let managed_domain_ids = managed_domain_ids.lock().await.clone();
     for endpoint in apply_changes.clone().create {
         tracing::trace!("for endpoint {:?}...", &endpoint);
-        dbg!(managed_domain_ids);
+        dbg!(&managed_domain_ids);
         let Some((domain, id)) = managed_domain_ids.iter().find(|&(d, _)| endpoint.dns_name.ends_with(d.as_str())) else {
             continue
         };
