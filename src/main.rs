@@ -47,7 +47,7 @@ async fn main() {
         .await.unwrap();
 
     tracing::info!("Shutting down!");
-    hp_task_handle.abort().await;
+    hp_task_handle.abort();
     tracing::info!("Goodbye!");
 }
 
