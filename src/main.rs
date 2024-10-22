@@ -20,7 +20,6 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(retrieve_domain_filter))
-        .route("/healthz", get(root))
         .route("/records", get(retrieve_dns_records))
         .route("/adjustendpoints", post(adjust_endpoints))
         .with_state(app_state);
@@ -30,10 +29,12 @@ async fn main() {
     let health_probes_listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     let app_listener = tokio::net::TcpListener::bind("0.0.0.0:8888").await.unwrap();
 
-    axum::serve(
-        health_probes_listener,
-        Router::new().route("/healthz", get(root)).into_make_service_with_connect_info::<SocketAddr>()
-    ).await.unwrap();
+    let hp_task_handle = tokio::spawn(async move {
+        axum::serve(
+            health_probes_listener,
+            Router::new().route("/healthz", get(root)).into_make_service_with_connect_info::<SocketAddr>()
+        ).await.unwrap();
+    });
 
     axum::serve(app_listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
@@ -45,7 +46,9 @@ async fn main() {
         })
         .await.unwrap();
 
-    tracing::info!("Shutting down!")
+    tracing::info!("Shutting down!");
+    hp_task_handle.abort().await;
+    tracing::info!("Goodbye!");
 }
 
 async fn root() {} // default empty 200 response for readiness & liveness checks
