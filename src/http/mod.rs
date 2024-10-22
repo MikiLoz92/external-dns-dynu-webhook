@@ -16,7 +16,7 @@ use crate::http::dynu::{DnsResponse, RecordsResponse, RecordResponse, RecordRequ
 
 #[debug_handler]
 pub async fn retrieve_dns_records(
-    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, mut managed_domain_ids }): State<AppState>,
+    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids }): State<AppState>,
 ) -> Json<Vec<Endpoint>> {
 
     tracing::debug!("GET to /records (retrieve_dns_records)");
@@ -33,9 +33,11 @@ pub async fn retrieve_dns_records(
 
     let text = response.text().await.unwrap();
     let dns_response = serde_json::from_str::<DnsResponse>(text.as_str()).unwrap();
+    let mut domain_name_id_correlation_map = HashMap::<String, u64>::new();
+
     for domain in dns_response.domains {
-        managed_domain_ids.lock().await.clear();
         if sync_domain_names.contains(&domain.name) {
+            domain_name_id_correlation_map.insert(domain.name, domain.id);
             let response = reqwest::Client::new().get(format!("https://api.dynu.com/v2/dns/{}/record", domain.id))
                 .header("Accept", "application/json")
                 .header("API-Key", dynu_api_key.clone())
@@ -55,6 +57,9 @@ pub async fn retrieve_dns_records(
         }
     }
 
+    managed_domain_ids.lock().await.clear();
+    *managed_domain_ids.lock().await = domain_name_id_correlation_map;
+
     tracing::trace!("GET to /records returns {:?}", endpoints.clone());
     Json(endpoints)
 }
@@ -70,6 +75,7 @@ pub async fn apply_changes(
     let managed_domain_ids = managed_domain_ids.lock().await.clone();
     for endpoint in apply_changes.clone().create {
         tracing::trace!("for endpoint {:?}...", &endpoint);
+        dbg!(managed_domain_ids);
         let Some((domain, id)) = managed_domain_ids.iter().find(|&(d, _)| endpoint.dns_name.ends_with(d.as_str())) else {
             continue
         };
