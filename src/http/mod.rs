@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use reqwest::Request;
+use serde_json::Value;
 use crate::http::dynu::{DnsResponse, RecordsResponse, RecordResponse};
 
 #[debug_handler]
@@ -52,6 +53,16 @@ pub async fn retrieve_dns_records(
     }
 
     Json(endpoints)
+}
+
+#[debug_handler]
+pub async fn apply_changes(
+    State(AppState { reqwest_client, dynu_api_key, sync_domain_names: sync_domain_names, }): State<AppState>,
+    Json(payload): Json<Value>
+) -> impl IntoResponse {
+
+    dbg!(payload);
+
 }
 
 #[debug_handler]

@@ -1,7 +1,7 @@
 mod state;
 mod http;
 
-use crate::http::{adjust_endpoints, retrieve_dns_records, retrieve_domain_filter};
+use crate::http::{adjust_endpoints, retrieve_dns_records, retrieve_domain_filter, apply_changes};
 use crate::state::AppState;
 use axum::routing::{get, post};
 use axum::Router;
@@ -21,6 +21,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(retrieve_domain_filter))
         .route("/records", get(retrieve_dns_records))
+        .route("/records", post(apply_changes))
         .route("/adjustendpoints", post(adjust_endpoints))
         .with_state(app_state);
 
