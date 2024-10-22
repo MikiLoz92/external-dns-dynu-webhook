@@ -12,11 +12,11 @@ use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use reqwest::Request;
 use serde_json::Value;
-use crate::http::dynu::{DnsResponse, RecordsResponse, RecordResponse};
+use crate::http::dynu::{DnsResponse, RecordsResponse, RecordResponse, RecordRequest};
 
 #[debug_handler]
 pub async fn retrieve_dns_records(
-    State(AppState { reqwest_client, dynu_api_key, sync_domain_names: sync_domain_names, }): State<AppState>,
+    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, mut managed_domain_ids }): State<AppState>,
 ) -> Json<Vec<Endpoint>> {
 
     tracing::debug!("GET to /records (retrieve_dns_records)");
@@ -34,6 +34,7 @@ pub async fn retrieve_dns_records(
     let text = response.text().await.unwrap();
     let dns_response = serde_json::from_str::<DnsResponse>(text.as_str()).unwrap();
     for domain in dns_response.domains {
+        managed_domain_ids.lock().await.clear();
         if sync_domain_names.contains(&domain.name) {
             let response = reqwest::Client::new().get(format!("https://api.dynu.com/v2/dns/{}/record", domain.id))
                 .header("Accept", "application/json")
@@ -60,11 +61,42 @@ pub async fn retrieve_dns_records(
 
 #[debug_handler]
 pub async fn apply_changes(
-    State(AppState { reqwest_client, dynu_api_key, sync_domain_names: sync_domain_names, }): State<AppState>,
-    Json(payload): Json<Value>
+    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids }): State<AppState>,
+    Json(apply_changes): Json<ApplyChanges>
 ) -> impl IntoResponse {
 
-    tracing::debug!("POST to /records (apply_changes) with {:?}", payload);
+    tracing::debug!("POST to /records (apply_changes) with {:?}", apply_changes);
+
+    let managed_domain_ids = managed_domain_ids.lock().await.clone();
+    for endpoint in apply_changes.clone().create {
+        tracing::trace!("for endpoint {:?}...", &endpoint);
+        let Some((domain, id)) = managed_domain_ids.iter().find(|&(d, _)| endpoint.dns_name.ends_with(d.as_str())) else {
+            continue
+        };
+        tracing::trace!("...found domain {:?} and domain id {:?}", domain, id);
+        let record_request = RecordRequest::new(
+            endpoint.dns_name.clone().strip_suffix(format!(".{}", domain).as_str()).unwrap().to_owned(),
+            endpoint.record_type.clone(),
+            300,
+            true,
+            None,
+            match endpoint.record_type.as_str() {
+                "A" => Some(endpoint.targets.first().unwrap().clone()),
+                _ => None,
+            },
+            match endpoint.record_type.as_str() {
+                "TXT" => Some(endpoint.targets.first().unwrap().clone()),
+                _ => None,
+            },
+        );
+        tracing::trace!("Creating record {:?}", &record_request);
+        let response = reqwest::Client::new().post(format!("https://api.dynu.com/v2/dns/{}/record", id))
+            .header("Accept", "application/json")
+            .header("API-Key", dynu_api_key.clone())
+            .json(&record_request)
+            .send().await;
+        tracing::trace!("Dynu response: {:?}", response)
+    }
     //dbg!(payload);
     tracing::trace!("POST to /records returns 200 (not correct, should be 204)");
 
@@ -142,4 +174,13 @@ pub struct DomainFilter {
     pub regex_include: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub regex_exclude: Option<String>,
+}
+
+#[derive(Debug, Clone, new, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ApplyChanges {
+    pub create: Vec<Endpoint>,
+    pub update_old: Vec<Endpoint>,
+    pub update_new: Vec<Endpoint>,
+    pub delete: Vec<Endpoint>,
 }

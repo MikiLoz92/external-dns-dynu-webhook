@@ -1,3 +1,4 @@
+use derive_new::new;
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use time::OffsetDateTime;
@@ -58,4 +59,20 @@ pub struct RecordResponse {
     pub ipv4_address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub host: Option<String>,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize, new)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordRequest {
+    pub node_name: String,
+    pub record_type: String,
+    pub ttl: u32,
+    pub state: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ipv4_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_data: Option<String>,
 }
