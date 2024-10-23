@@ -8,7 +8,7 @@ use axum_macros::debug_handler;
 use derive_new::new;
 use ::serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use reqwest::Request;
 use serde_json::Value;
@@ -109,6 +109,7 @@ pub async fn apply_changes(
     //dbg!(payload);
     tracing::trace!("POST to /records returns 200 (not correct, should be 204)");
 
+    StatusCode::NO_CONTENT
 }
 
 #[debug_handler]
