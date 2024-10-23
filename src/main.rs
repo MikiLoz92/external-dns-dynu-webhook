@@ -28,6 +28,7 @@ async fn main() {
         reqwest::Client::new(),
         std::env::var("DYNU_API_KEY").unwrap(),
         std::env::var("DYNU_DOMAIN_NAMES").unwrap().split(",").map(|s| s.to_owned()).collect(),
+        std::env::var("DYNU_GROUP_NAME").ok(),
     );
 
     let app = Router::new()

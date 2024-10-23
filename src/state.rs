@@ -10,6 +10,7 @@ pub struct AppState {
     pub reqwest_client: Client,
     pub dynu_api_key: String,
     pub sync_domain_names: Vec<String>,
+    pub group_name: Option<String>,
     #[new(default)]
     pub managed_domain_ids: Arc<Mutex<HashMap<String, u64>>>,
     #[new(default)]

@@ -17,7 +17,7 @@ use crate::http::dynu::{DnsResponse, RecordsResponse, RecordResponse, RecordRequ
 
 #[debug_handler]
 pub async fn retrieve_dns_records(
-    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids, record_ids }): State<AppState>,
+    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids, record_ids, .. }): State<AppState>,
 ) -> Json<Vec<Endpoint>> {
 
     tracing::debug!("GET to /records (retrieve_dns_records)");
@@ -71,8 +71,15 @@ pub async fn retrieve_dns_records(
 
 #[debug_handler]
 pub async fn apply_changes(
-    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids, record_ids }): State<AppState>,
-    Json(apply_changes): Json<ApplyChanges>
+    State(AppState {
+              reqwest_client,
+              dynu_api_key,
+              sync_domain_names,
+              group_name,
+              managed_domain_ids,
+              record_ids
+          }): State<AppState>,
+    Json(apply_changes): Json<ApplyChanges>,
 ) -> impl IntoResponse {
 
     tracing::debug!("POST to /records (apply_changes) with {:?}", apply_changes);
@@ -91,10 +98,13 @@ pub async fn apply_changes(
             endpoint.record_type.clone(),
             300,
             true,
-            None,
-            match endpoint.record_type.as_str() {
-                "A" => Some(endpoint.targets.first().unwrap().clone()),
-                _ => None,
+            group_name.clone(),
+            match group_name {
+                Some(_) => None,
+                None => match endpoint.record_type.as_str() {
+                    "A" => Some(endpoint.targets.first().unwrap().clone()),
+                    _ => None,
+                }
             },
             match endpoint.record_type.as_str() {
                 "TXT" => Some(endpoint.targets.first().unwrap().clone()),
