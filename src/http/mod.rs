@@ -1,7 +1,7 @@
 mod dynu;
 mod serde;
 
-use crate::state::AppState;
+use crate::state::{AppState, RecordHash};
 use axum::extract::State;
 use axum::Json;
 use axum_macros::debug_handler;
@@ -45,7 +45,7 @@ pub async fn retrieve_dns_records(
                 .send().await.unwrap();
             let records_response = serde_json::from_str::<RecordsResponse>(response.text().await.unwrap().as_str()).unwrap();
             for record in records_response.dns_records {
-                record_ids.lock().await.insert(record.hostname.clone(), record.id);
+                record_ids.lock().await.insert(RecordHash::new(record.hostname.clone(), record.record_type.clone()), record.id);
                 let mut targets = Vec::<String>::new();
                 if let Some(target) = record.ipv4_address { targets.push(target) }
                 if let Some(target) = record.text_data { targets.push(target) }
@@ -113,7 +113,7 @@ pub async fn apply_changes(
     for endpoint in apply_changes.clone().delete {
 
         tracing::trace!("for endpoint {:?}...", &endpoint);
-        let record_id = record_ids.lock().await.get(endpoint.dns_name.as_str()).cloned();
+        let record_id = record_ids.lock().await.get(&RecordHash::new(endpoint.dns_name.clone(), endpoint.record_type.clone())).cloned();
         dbg!(record_id);
         let Some((domain, domain_id)) = managed_domain_ids.iter().find(|&(d, _)| endpoint.dns_name.ends_with(d.as_str())) else {
             continue
