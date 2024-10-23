@@ -44,9 +44,12 @@ pub async fn retrieve_dns_records(
                 .send().await.unwrap();
             let records_response = serde_json::from_str::<RecordsResponse>(response.text().await.unwrap().as_str()).unwrap();
             for record in records_response.dns_records {
+                let mut targets = Vec::<String>::new();
+                if let Some(target) = record.ipv4_address { targets.push(target) }
+                if let Some(target) = record.text_data { targets.push(target) }
                 endpoints.push(Endpoint::new(
                     record.hostname,
-                    vec![],
+                    targets,
                     record.record_type,
                     None,
                     Some(record.ttl as i64),
