@@ -11,4 +11,6 @@ pub struct AppState {
     pub sync_domain_names: Vec<String>,
     #[new(default)]
     pub managed_domain_ids: Arc<Mutex<HashMap<String, u64>>>,
+    #[new(default)]
+    pub record_ids: Arc<Mutex<HashMap<String, u64>>>,
 }

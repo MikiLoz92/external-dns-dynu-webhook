@@ -8,6 +8,7 @@ use axum_macros::debug_handler;
 use derive_new::new;
 use ::serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::process::id;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use reqwest::Request;
@@ -16,7 +17,7 @@ use crate::http::dynu::{DnsResponse, RecordsResponse, RecordResponse, RecordRequ
 
 #[debug_handler]
 pub async fn retrieve_dns_records(
-    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids }): State<AppState>,
+    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids, record_ids }): State<AppState>,
 ) -> Json<Vec<Endpoint>> {
 
     tracing::debug!("GET to /records (retrieve_dns_records)");
@@ -44,6 +45,7 @@ pub async fn retrieve_dns_records(
                 .send().await.unwrap();
             let records_response = serde_json::from_str::<RecordsResponse>(response.text().await.unwrap().as_str()).unwrap();
             for record in records_response.dns_records {
+                record_ids.lock().await.insert(record.hostname.clone(), record.id);
                 let mut targets = Vec::<String>::new();
                 if let Some(target) = record.ipv4_address { targets.push(target) }
                 if let Some(target) = record.text_data { targets.push(target) }
@@ -69,13 +71,14 @@ pub async fn retrieve_dns_records(
 
 #[debug_handler]
 pub async fn apply_changes(
-    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids }): State<AppState>,
+    State(AppState { reqwest_client, dynu_api_key, sync_domain_names, managed_domain_ids, record_ids }): State<AppState>,
     Json(apply_changes): Json<ApplyChanges>
 ) -> impl IntoResponse {
 
     tracing::debug!("POST to /records (apply_changes) with {:?}", apply_changes);
 
     let managed_domain_ids = managed_domain_ids.lock().await.clone();
+    tracing::debug!("now creating endpoints");
     for endpoint in apply_changes.clone().create {
         tracing::trace!("for endpoint {:?}...", &endpoint);
         dbg!(&managed_domain_ids);
@@ -103,6 +106,23 @@ pub async fn apply_changes(
             .header("Accept", "application/json")
             .header("API-Key", dynu_api_key.clone())
             .json(&record_request)
+            .send().await;
+        tracing::trace!("Dynu response: {:?}", response)
+    }
+    tracing::debug!("now deleting endpoints");
+    for endpoint in apply_changes.clone().delete {
+
+        tracing::trace!("for endpoint {:?}...", &endpoint);
+        let record_id = record_ids.lock().await.get(endpoint.dns_name.as_str()).cloned();
+        dbg!(record_id);
+        let Some((domain, domain_id)) = managed_domain_ids.iter().find(|&(d, _)| endpoint.dns_name.ends_with(d.as_str())) else {
+            continue
+        };
+        let Some(record_id) = record_id else { continue };
+        tracing::trace!("Deleting record {:?}", &endpoint.dns_name);
+        let response = reqwest::Client::new().delete(format!("https://api.dynu.com/v2/dns/{}/record/{}", domain_id, record_id))
+            .header("Accept", "application/json")
+            .header("API-Key", dynu_api_key.clone())
             .send().await;
         tracing::trace!("Dynu response: {:?}", response)
     }
